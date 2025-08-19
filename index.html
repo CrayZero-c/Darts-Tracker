@@ -7,75 +7,151 @@
   <link rel="manifest" href="manifest.json">
   <style>
     body { font-family: sans-serif; margin: 20px; background: #f7f7f7; color: #222; }
-    h1 { text-align: center; }
+    h1, h2 { text-align: center; }
     .stats, .controls { margin: 20px auto; max-width: 400px; text-align: center; }
     button { font-size: 18px; padding: 10px 20px; margin: 10px; }
     #chart-container { width: 100%; max-width: 500px; margin: 20px auto; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <h1>🎯 Darts Trainer</h1>
-  <div class="stats">
-    <p>Treffer: <span id="hits">0</span></p>
-    <p>Würfe: <span id="throws">0</span></p>
-    <p>Trefferquote: <span id="accuracy">0%</span></p>
-    <p>Ø Average (fiktiv 20 Punkte pro Treffer): <span id="average">0</span></p>
+  <!-- Startscreen -->
+  <div id="startscreen">
+    <h1>🎯 Darts Trainer</h1>
+    <div class="controls">
+      <button onclick="showX01Settings()">X01 starten</button>
+      <button onclick="showTraining()">Training starten</button>
+      <button onclick="showStats()">Statistiken ansehen</button>
+    </div>
   </div>
-  <div class="controls">
-    <button onclick="recordHit()">Treffer</button>
-    <button onclick="recordMiss()">Fehlwurf</button>
-    <button onclick="reset()">Reset</button>
+
+  <!-- Training -->
+  <div id="training" class="hidden">
+    <h2>Training</h2>
+    <div class="stats">
+      <p>Treffer: <span id="hits">0</span></p>
+      <p>Würfe: <span id="throws">0</span></p>
+      <p>Trefferquote: <span id="accuracy">0%</span></p>
+      <p>Ø Average (fiktiv 20 Punkte pro Treffer): <span id="average">0</span></p>
+    </div>
+    <div class="controls">
+      <button onclick="recordHit()">Treffer</button>
+      <button onclick="recordMiss()">Fehlwurf</button>
+      <button onclick="backToMenu()">⬅ Zurück</button>
+    </div>
+    <div id="chart-container">
+      <canvas id="accuracyChart"></canvas>
+    </div>
   </div>
-  <div id="chart-container">
-    <canvas id="progressChart"></canvas>
+
+  <!-- X01 Settings -->
+  <div id="x01settings" class="hidden">
+    <h2>X01 Einstellungen</h2>
+    <div class="controls">
+      <label>Spieler:</label>
+      <select id="playerSelect">
+        <option>Spieler 1</option>
+        <option>Spieler 2</option>
+      </select><br><br>
+
+      <label>Startwert:</label>
+      <select id="startValue">
+        <option>301</option>
+        <option selected>501</option>
+        <option>701</option>
+      </select><br><br>
+
+      <label>In:</label>
+      <select id="inRule">
+        <option value="si">Straight In</option>
+        <option value="di">Double In</option>
+      </select><br><br>
+
+      <label>Out:</label>
+      <select id="outRule">
+        <option value="so">Straight Out</option>
+        <option value="do">Double Out</option>
+      </select><br><br>
+
+      <label>Legs (First to):</label>
+      <input type="number" id="legs" value="3" min="1"><br><br>
+
+      <label>Sets (Best of):</label>
+      <input type="number" id="sets" value="5" min="1"><br><br>
+
+      <button onclick="startX01()">▶ Spiel starten</button>
+      <button onclick="backToMenu()">⬅ Zurück</button>
+    </div>
+  </div>
+
+  <!-- Hier könnte später dein X01 Game -->
+  <div id="x01game" class="hidden">
+    <h2>X01 Spiel läuft...</h2>
+    <p id="x01info"></p>
+    <button onclick="backToMenu()">⬅ Zurück</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    let hits = 0;
-    let throws = 0;
-    let history = [];
+    // Navigation
+    function hideAll() {
+      document.getElementById("startscreen").classList.add("hidden");
+      document.getElementById("training").classList.add("hidden");
+      document.getElementById("x01settings").classList.add("hidden");
+      document.getElementById("x01game").classList.add("hidden");
+    }
 
-    const hitsEl = document.getElementById('hits');
-    const throwsEl = document.getElementById('throws');
-    const accuracyEl = document.getElementById('accuracy');
-    const averageEl = document.getElementById('average');
+    function showTraining() {
+      hideAll();
+      document.getElementById("training").classList.remove("hidden");
+    }
 
-    const ctx = document.getElementById('progressChart').getContext('2d');
-    const progressChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Trefferquote %',
-          data: [],
-          fill: false,
-          borderColor: 'blue',
-          tension: 0.1
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: { beginAtZero: true, max: 100 }
-        }
-      }
-    });
+    function showX01Settings() {
+      hideAll();
+      document.getElementById("x01settings").classList.remove("hidden");
+    }
+
+    function startX01() {
+      const settings = {
+        player: document.getElementById("playerSelect").value,
+        startValue: parseInt(document.getElementById("startValue").value),
+        inRule: document.getElementById("inRule").value,
+        outRule: document.getElementById("outRule").value,
+        legs: parseInt(document.getElementById("legs").value),
+        sets: parseInt(document.getElementById("sets").value)
+      };
+      console.log("Starte X01 mit:", settings);
+      hideAll();
+      document.getElementById("x01game").classList.remove("hidden");
+      document.getElementById("x01info").innerText =
+        `Spieler: ${settings.player}, Startwert: ${settings.startValue}, In: ${settings.inRule}, Out: ${settings.outRule}, Legs: ${settings.legs}, Sets: ${settings.sets}`;
+    }
+
+    function showStats() {
+      alert("Statistiken können hier später angezeigt werden.");
+    }
+
+    function backToMenu() {
+      hideAll();
+      document.getElementById("startscreen").classList.remove("hidden");
+    }
+
+    // Training Logik
+    let hits = 0, throws = 0, accuracyHistory = [];
 
     function updateStats() {
-      hitsEl.textContent = hits;
-      throwsEl.textContent = throws;
-      const acc = throws > 0 ? (hits / throws * 100).toFixed(1) : 0;
-      accuracyEl.textContent = acc + '%';
-      const avg = throws > 0 ? (hits * 20 / (throws/3)).toFixed(1) : 0;
-      averageEl.textContent = avg;
+      document.getElementById("hits").innerText = hits;
+      document.getElementById("throws").innerText = throws;
+      let accuracy = throws > 0 ? ((hits / throws) * 100).toFixed(1) : 0;
+      document.getElementById("accuracy").innerText = accuracy + "%";
+      let average = (hits * 20).toFixed(1);
+      document.getElementById("average").innerText = average;
 
-      history.push(acc);
-      progressChart.data.labels.push(throws);
-      progressChart.data.datasets[0].data.push(acc);
-      progressChart.update();
-
-      saveState();
+      accuracyHistory.push(accuracy);
+      if (accuracyHistory.length > 20) accuracyHistory.shift();
+      accuracyChart.data.labels = accuracyHistory.map((_, i) => i + 1);
+      accuracyChart.data.datasets[0].data = accuracyHistory;
+      accuracyChart.update();
     }
 
     function recordHit() {
@@ -89,33 +165,22 @@
       updateStats();
     }
 
-    function reset() {
-      hits = 0;
-      throws = 0;
-      history = [];
-      progressChart.data.labels = [];
-      progressChart.data.datasets[0].data = [];
-      progressChart.update();
-      updateStats();
-    }
-
-    function saveState() {
-      localStorage.setItem('darts_hits', hits);
-      localStorage.setItem('darts_throws', throws);
-      localStorage.setItem('darts_history', JSON.stringify(history));
-    }
-
-    function loadState() {
-      hits = parseInt(localStorage.getItem('darts_hits')) || 0;
-      throws = parseInt(localStorage.getItem('darts_throws')) || 0;
-      history = JSON.parse(localStorage.getItem('darts_history')) || [];
-      progressChart.data.labels = Array.from({length: history.length}, (_, i) => i+1);
-      progressChart.data.datasets[0].data = history;
-      progressChart.update();
-      updateStats();
-    }
-
-    window.onload = loadState;
+    // Chart.js Setup
+    const ctx = document.getElementById("accuracyChart").getContext("2d");
+    const accuracyChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Trefferquote (%)",
+          data: [],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        scales: { y: { beginAtZero: true, max: 100 } }
+      }
+    });
   </script>
 </body>
 </html>
