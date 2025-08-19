@@ -1,0 +1,242 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Darts X01</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Oswald', sans-serif;
+      background-color: #0a1a33;
+      color: #f0f0f0;
+    }
+    header, footer {
+      text-align: center;
+      padding: 1rem;
+    }
+    .screen { display: none; padding: 1rem; }
+    .active { display: block; }
+    .form-group { margin: 1rem 0; }
+    label { display: block; margin-bottom: .5rem; }
+    input, select, button {
+      font-size: 1rem;
+      padding: .5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      padding: .5rem;
+      text-align: center;
+      border-bottom: 1px solid #555;
+    }
+    th { background-color: #13294b; }
+    .current { background-color: #1e3d6b; }
+    .controls {
+      display: flex;
+      gap: .5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .controls input {
+      flex: 1;
+      min-width: 100px;
+    }
+    .controls button {
+      background-color: #224488;
+      color: #fff;
+      border: none;
+      border-radius: .3rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .controls button:hover {
+      background-color: #3355aa;
+    }
+    .winner {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Darts X01</h1>
+  </header>
+
+  <!-- Startscreen -->
+  <div id="start" class="screen active">
+    <div class="form-group">
+      <label>Spieleranzahl</label>
+      <select id="numPlayers">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
+    </div>
+    <div id="playerInputs"></div>
+    <div class="form-group">
+      <label>Startwert</label>
+      <select id="startScore">
+        <option>301</option>
+        <option selected>501</option>
+        <option>701</option>
+        <option>1001</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>In-Regel</label>
+      <select id="inRule">
+        <option>Straight In</option>
+        <option>Double In</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Out-Regel</label>
+      <select id="outRule">
+        <option>Straight Out</option>
+        <option selected>Double Out</option>
+        <option>Master Out</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Legs (First to)</label>
+      <input id="legsToWin" type="number" value="3" min="1">
+    </div>
+    <div class="form-group">
+      <label>Sets (Best of)</label>
+      <input id="setsToWin" type="number" value="5" min="1">
+    </div>
+    <button onclick="startGame()">Spiel starten</button>
+  </div>
+
+  <!-- Game screen -->
+  <div id="game" class="screen">
+    <table id="scoreboard">
+      <thead>
+        <tr><th>Name</th><th>Rest</th><th>Legs</th><th>Sets</th><th>Avg</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="controls">
+      <input id="scoreInput" type="number" min="0" max="180" placeholder="Score">
+      <button onclick="enterScore()">Enter</button>
+      <button onclick="undo()">Undo</button>
+    </div>
+  </div>
+
+  <!-- Winner screen -->
+  <div id="winner" class="screen">
+    <div class="winner" id="winnerMsg"></div>
+    <button onclick="backToMenu()">Neues Match starten</button>
+  </div>
+
+<script>
+let players = [];
+let current = 0;
+let startScore = 501;
+let inRule = "Straight In";
+let outRule = "Double Out";
+let legsToWin = 3;
+let setsToWin = 5;
+let history = [];
+
+document.getElementById("numPlayers").addEventListener("change", updatePlayerInputs);
+function updatePlayerInputs() {
+  const num = parseInt(document.getElementById("numPlayers").value);
+  const container = document.getElementById("playerInputs");
+  container.innerHTML = "";
+  for (let i=1; i<=num; i++) {
+    const div = document.createElement("div");
+    div.className = "form-group";
+    div.innerHTML = `<label>Spieler ${i}:</label><input id="player${i}" value="Spieler ${i}">`;
+    container.appendChild(div);
+  }
+}
+updatePlayerInputs();
+
+function startGame() {
+  players = [];
+  const num = parseInt(document.getElementById("numPlayers").value);
+  startScore = parseInt(document.getElementById("startScore").value);
+  inRule = document.getElementById("inRule").value;
+  outRule = document.getElementById("outRule").value;
+  legsToWin = parseInt(document.getElementById("legsToWin").value);
+  setsToWin = parseInt(document.getElementById("setsToWin").value);
+  for (let i=1; i<=num; i++) {
+    const name = document.getElementById("player"+i).value;
+    players.push({name, score:startScore, legs:0, sets:0, darts:0, points:0});
+  }
+  current = 0;
+  history = [];
+  switchScreen("game");
+  renderBoard();
+}
+
+function switchScreen(id) {
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function renderBoard() {
+  const tbody = document.querySelector("#scoreboard tbody");
+  tbody.innerHTML = "";
+  players.forEach((p,i)=>{
+    const tr = document.createElement("tr");
+    if (i===current) tr.classList.add("current");
+    const avg = p.darts>0 ? (p.points / p.darts * 3).toFixed(1) : "0.0";
+    tr.innerHTML = `<td>${p.name}</td><td>${p.score}</td><td>${p.legs}</td><td>${p.sets}</td><td>${avg}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function enterScore() {
+  const val = parseInt(document.getElementById("scoreInput").value);
+  if (isNaN(val)) return;
+  const p = players[current];
+  history.push(JSON.stringify(players));
+  p.score -= val;
+  p.points += val;
+  p.darts += 3; // pro Besuch 3 Darts
+  if (p.score === 0) {
+    p.legs++;
+    if (p.legs >= legsToWin) {
+      p.sets++;
+      p.legs = 0;
+      if (p.sets >= setsToWin) {
+        document.getElementById("winnerMsg").innerText = p.name+" hat das Match gewonnen!";
+        switchScreen("winner");
+        return;
+      }
+    }
+    players.forEach(pl=>pl.score = startScore);
+  } else if (p.score < 0) {
+    p.score += val; // bust
+  }
+  current = (current+1)%players.length;
+  document.getElementById("scoreInput").value = "";
+  renderBoard();
+}
+
+function undo() {
+  if (history.length>0) {
+    const prev = JSON.parse(history.pop());
+    players = prev;
+    current = (current-1+players.length)%players.length;
+    renderBoard();
+  }
+}
+
+function backToMenu() {
+  window.location.href = "index.html";
+}
+</script>
+</body>
+</html>
