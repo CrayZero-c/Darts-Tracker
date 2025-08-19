@@ -5,9 +5,117 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Darts Trainer</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #f7f7f7; color: #222; }
+    h1 { text-align: center; }
+    .stats, .controls { margin: 20px auto; max-width: 400px; text-align: center; }
+    button { font-size: 18px; padding: 10px 20px; margin: 10px; }
+    #chart-container { width: 100%; max-width: 500px; margin: 20px auto; }
+  </style>
 </head>
 <body>
-  <h1>Darts Trainer</h1>
-  <p>Deine Trainings-App läuft!</p>
+  <h1>🎯 Darts Trainer</h1>
+  <div class="stats">
+    <p>Treffer: <span id="hits">0</span></p>
+    <p>Würfe: <span id="throws">0</span></p>
+    <p>Trefferquote: <span id="accuracy">0%</span></p>
+    <p>Ø Average (fiktiv 20 Punkte pro Treffer): <span id="average">0</span></p>
+  </div>
+  <div class="controls">
+    <button onclick="recordHit()">Treffer</button>
+    <button onclick="recordMiss()">Fehlwurf</button>
+    <button onclick="reset()">Reset</button>
+  </div>
+  <div id="chart-container">
+    <canvas id="progressChart"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    let hits = 0;
+    let throws = 0;
+    let history = [];
+
+    const hitsEl = document.getElementById('hits');
+    const throwsEl = document.getElementById('throws');
+    const accuracyEl = document.getElementById('accuracy');
+    const averageEl = document.getElementById('average');
+
+    const ctx = document.getElementById('progressChart').getContext('2d');
+    const progressChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Trefferquote %',
+          data: [],
+          fill: false,
+          borderColor: 'blue',
+          tension: 0.1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, max: 100 }
+        }
+      }
+    });
+
+    function updateStats() {
+      hitsEl.textContent = hits;
+      throwsEl.textContent = throws;
+      const acc = throws > 0 ? (hits / throws * 100).toFixed(1) : 0;
+      accuracyEl.textContent = acc + '%';
+      const avg = throws > 0 ? (hits * 20 / (throws/3)).toFixed(1) : 0;
+      averageEl.textContent = avg;
+
+      history.push(acc);
+      progressChart.data.labels.push(throws);
+      progressChart.data.datasets[0].data.push(acc);
+      progressChart.update();
+
+      saveState();
+    }
+
+    function recordHit() {
+      hits++;
+      throws++;
+      updateStats();
+    }
+
+    function recordMiss() {
+      throws++;
+      updateStats();
+    }
+
+    function reset() {
+      hits = 0;
+      throws = 0;
+      history = [];
+      progressChart.data.labels = [];
+      progressChart.data.datasets[0].data = [];
+      progressChart.update();
+      updateStats();
+    }
+
+    function saveState() {
+      localStorage.setItem('darts_hits', hits);
+      localStorage.setItem('darts_throws', throws);
+      localStorage.setItem('darts_history', JSON.stringify(history));
+    }
+
+    function loadState() {
+      hits = parseInt(localStorage.getItem('darts_hits')) || 0;
+      throws = parseInt(localStorage.getItem('darts_throws')) || 0;
+      history = JSON.parse(localStorage.getItem('darts_history')) || [];
+      progressChart.data.labels = Array.from({length: history.length}, (_, i) => i+1);
+      progressChart.data.datasets[0].data = history;
+      progressChart.update();
+      updateStats();
+    }
+
+    window.onload = loadState;
+  </script>
 </body>
 </html>
